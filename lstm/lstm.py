@@ -55,13 +55,15 @@ class LSTM:
 
         output_gate_out = self.output_gate()
        
-    self.ltm = self.ltm * forget_gate_out + input_gate_out
-    self.stm = output_gate_out * tanh_activation(self.ltm)
+        self.ltm = self.ltm * forget_gate_out + input_gate_out
+        self.stm = output_gate_out * tanh_activation(self.ltm)
         return (round(self.ltm, 1), round(self.stm,1))
     
     
     def backpropagation(orig_val, pred_val, ltm, stm, output_gate_out,forget_gate_out, input, i, g):
         """
+        orig_val is the one that is pointed by supervised learning
+        pred_val is the value predicted by the lstm 
         ct = self.ltm
         ht = self.scm
         o = output_gate_out
@@ -117,13 +119,36 @@ class LSTM:
 
         print(gradients)
 
+    def update_weights(self, grads, learning_rate):
+        #update output gate weights
+        self.w_output_gate["w_stm"] -= learning_rate * grads["dE_dw_stm_output_gate"] 
+        self.w_output_gate["w_in"] -= learning_rate * grads["dE_dw_X_output_gate"] 
+        
+        #update input gate sigmoid weights
+        self.w_input_gate_sigmoid["w_stm"] -= learning_rate * grads["dE_dw_stm_input_gate"] 
+        self.w_input_gate_signoid["w_in"] -= learning_rate * grads["dE_dw_X_input_gate"] 
+            
+        #update input gate tanh weights
+        self.w_input_gate_tan["w_stm"] -= learning_rate * grads["dE_dw_stm_input_gate_tan"] 
+        self.w_input_gate_tan["w_in"] -= learning_rate * grads["dE_dw_X_input_gate_tan"] 
+        
+
+        #update forget gate weights
+        self.w_forget_gate["w_stm"] -= learning_rate * grads["dE_dw_stm_forget_gate"] 
+        self.w_forget_gate["w_in"] -= learning_rate * grads["dE_dw_X_forget_gate"] 
+
+    def get_weights(self):
+        return {"forget_gate":self.w_forget_gate, "input_sig": self.w_input_gate_sigmoid, "input_tan": self.w_input_gate_tan, "output": self.w_output_gate}
+    
+
 if __name__ == "__main__":
     ltm, stm = (0,0)
     lstm = LSTM(ltm=ltm,stm=stm,input=0)
     data = [0,0.5,0.25,1]
-    for i in range(len(data)):
-        output = lstm.next(data[i])
-        ltm, stm = output
-        print(output)
-        print("\n\nANOTHER LAYER\n\n")
+#    for i in range(len(data)):
+#        output = lstm.next(data[i])
+#        ltm, stm = output
+#        print(output)
+#        print("\n\nANOTHER LAYER\n\n")
     print(ltm, stm)
+    print(lstm.get_weights())
