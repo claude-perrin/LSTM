@@ -1,0 +1,5 @@
+.DS_Store
+.ipynb_checkpoints
+Project_card.*
+*.csv*
+__pycache__*
