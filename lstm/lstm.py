@@ -1,5 +1,5 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+#import pandas as pd
+#import matplotlib.pyplot as plt
 from activation_functions import tanh_activation, sigmoid
 
 
@@ -112,7 +112,7 @@ class LSTM:
         gradients["stm_input_gate_tan"] = dE_dg * i * (1 - i) * self.stm
         gradients["bias_input_gate_tan"] = dE_dg * i * (1 - i)
 
-        print(gradients)
+        return gradients
 
     def update_weights(self, grads, learning_rate):
         #update output gate weights
@@ -132,18 +132,27 @@ class LSTM:
         self.w_forget_gate["w_stm"] -= learning_rate * grads["stm_forget_gate"] 
         self.w_forget_gate["w_in"] -= learning_rate * grads["in_forget_gate"] 
 
+    
+    def train(self, input_array, target_array):
+        for input in input_array:
+            self.next(input)
+
+
+
+
+
     def get_weights(self):
         return {"forget_gate":self.w_forget_gate, "input_sig": self.w_input_gate_sigmoid, "input_tan": self.w_input_gate_tan, "output": self.w_output_gate}
-
-
+    
 if __name__ == "__main__":
     ltm, stm = (0,0)
     lstm = LSTM()
     data = [0,0.5,0.25,1]
-#    for i in range(len(data)):
-    #        output = lstm.next(data[i])
-#        ltm, stm = output
-#        print(output)
-#        print("\n\nANOTHER LAYER\n\n")
+    for i in range(len(data)):
+        output = lstm.next(data[i])
+        ltm, stm = output
+        print(output)
+        print("\n\nANOTHER LAYER\n\n")
 print(ltm, stm)
-print(lstm.get_weights())
+for key,value in lstm.get_weights().items():
+    print(key, value)
