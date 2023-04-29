@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from activation_functions import *
+from activation_functions import tanh_activation, sigmoid
 
 
 class LSTM:
@@ -70,18 +70,20 @@ class LSTM:
 
         gradients = {}
         # Gradient with respect to output gate
-        gradients["dE_do"] = E_delta * tanh(ltm)
+        dE_do = E_delta * tanh_activation(ltm)
 
-        #Gradient with respect to ltm
-        gradients["dE_dltm"] = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2)
 
-        #Gradient with respect to input gate dE/di, dE/dg
-        gradients["dE_di"] = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2) * g
-        gradients["dE_dg"] = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2) * i
+        # Gradient with respect to input gate dE/di, dE/dg
+        dE_di = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2) * g
+        dE_dg = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2) * i
 
         # Gradient with respect to forget gate
 
-        gradients["dE_df"] = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2) * self.ltm
+        dE_df = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2) * self.ltm
+
+        # Gradient with respect to ltm
+
+        gradients["dE_dltm"] = E_delta * output_gate_out * (1 - tanh_activation(ltm)^2)
 
         # Gradient with respect to self.ltm
 
@@ -89,46 +91,46 @@ class LSTM:
 
         # Gradient with respect to output gate weights
 
-        gradients["dE_dw_X_output_gate"] = gradients["dE_do"] * output_gate_out * (1 - output_gate_out) * input
-        gradients["dE_dw_stm_output_gate"] = gradients["dE_do"] * output_gate_out * (1 - output_gate_out) * self.stm
-        gradients["dE_db_bias_output_gate"] = gradients["dE_do"] * output_gate_out * (1 - output_gate_out)
+        gradients["in_output_gate"] = dE_do * output_gate_out * (1 - output_gate_out) * input
+        gradients["stm_output_gate"] = dE_do * output_gate_out * (1 - output_gate_out) * self.stm
+        gradients["bias_output_gate"] = dE_do * output_gate_out * (1 - output_gate_out)
 
         # Gradient with respect to forget gate weights
 
-        gradients["dE_dw_X_forget_gate"] = gradients["dE_df"] * forget_gate_out * (1 - forget_gate_out) * input
-        gradients["dE_dw_stm_forget_gate"] = gradients["dE_df"] * forget_gate_out * (1 - forget_gate_out) * self.stm
-        gradients["dE_db_bias_forget_gate"] = gradients["dE_df"] * forget_gate_out * (1 - forget_gate_out)
+        gradients["in_forget_gate"] = dE_df * forget_gate_out * (1 - forget_gate_out) * input
+        gradients["stm_forget_gate"] = dE_df * forget_gate_out * (1 - forget_gate_out) * self.stm
+        gradients["bias_forget_gate"] = dE_df * forget_gate_out * (1 - forget_gate_out)
 
         # Gradient with respect to input gate weights:
 
-        gradients["dE_dw_X_input_gate_sig"] = gradients["dE_di"] * g * (1 - g) * input
-        gradients["dE_dw_stm_input_gate_sig"] = gradients["dE_di"] * g * (1 - g) * self.stm
-        gradients["dE_db_bias_input_gate_sig"] = gradients["dE_di"] * g * (1 - g)
+        gradients["in_input_gate_sig"] = dE_di * g * (1 - g) * input
+        gradients["stm_input_gate_sig"] = dE_di * g * (1 - g) * self.stm
+        gradients["bias_input_gate_sig"] = dE_di * g * (1 - g)
 
 
-        gradients["dE_dw_X_input_gate_tan"] = gradients["dE_dg"] * i * (1 - i) * input
-        gradients["dE_dw_stm_input_gate_tan"] = gradients["dE_dg"] * i * (1 - i) * self.stm
-        gradients["dE_db_bias_input_gate_tan"] = gradients["dE_dg"] * i * (1 - i)
+        gradients["in_input_gate_tan"] = dE_dg * i * (1 - i) * input
+        gradients["stm_input_gate_tan"] = dE_dg * i * (1 - i) * self.stm
+        gradients["bias_input_gate_tan"] = dE_dg * i * (1 - i)
 
         print(gradients)
 
     def update_weights(self, grads, learning_rate):
         #update output gate weights
-        self.w_output_gate["w_stm"] -= learning_rate * grads["dE_dw_stm_output_gate"] 
-        self.w_output_gate["w_in"] -= learning_rate * grads["dE_dw_X_output_gate"] 
+        self.w_output_gate["w_stm"] -= learning_rate * grads["stm_output_gate"] 
+        self.w_output_gate["w_in"] -= learning_rate * grads["in_output_gate"] 
 
         #update input gate sigmoid weights
-        self.w_input_gate_sigmoid["w_stm"] -= learning_rate * grads["dE_dw_stm_input_gate"] 
-        self.w_input_gate_signoid["w_in"] -= learning_rate * grads["dE_dw_X_input_gate"] 
+        self.w_input_gate_sigmoid["w_stm"] -= learning_rate * grads["stm_input_gate"] 
+        self.w_input_gate_signoid["w_in"] -= learning_rate * grads["in_input_gate"] 
 
         #update input gate tanh weights
-        self.w_input_gate_tan["w_stm"] -= learning_rate * grads["dE_dw_stm_input_gate_tan"] 
-        self.w_input_gate_tan["w_in"] -= learning_rate * grads["dE_dw_X_input_gate_tan"] 
+        self.w_input_gate_tan["w_stm"] -= learning_rate * grads["stm_input_gate_tan"] 
+        self.w_input_gate_tan["w_in"] -= learning_rate * grads["in_input_gate_tan"] 
 
 
         #update forget gate weights
-        self.w_forget_gate["w_stm"] -= learning_rate * grads["dE_dw_stm_forget_gate"] 
-        self.w_forget_gate["w_in"] -= learning_rate * grads["dE_dw_X_forget_gate"] 
+        self.w_forget_gate["w_stm"] -= learning_rate * grads["stm_forget_gate"] 
+        self.w_forget_gate["w_in"] -= learning_rate * grads["in_forget_gate"] 
 
     def get_weights(self):
         return {"forget_gate":self.w_forget_gate, "input_sig": self.w_input_gate_sigmoid, "input_tan": self.w_input_gate_tan, "output": self.w_output_gate}
