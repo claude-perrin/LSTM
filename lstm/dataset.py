@@ -52,7 +52,7 @@ class Dataset:
         return [item for sublist in sequences for item in sublist]
 
 
-    def sequences_to_dicts(self,sequences):
+    def __sequences_to_dicts(self,sequences):
         """
         Creates word_to_idx and idx_to_word dictionaries for a list of sequences.
         """
@@ -76,20 +76,18 @@ class Dataset:
         unique_words.append('UNK')
 
         # Count number of sequences and number of unique words
-        num_sentences, vocab_size = len(sequences), len(unique_words)
+        self.num_sentences, self.vocab_size = len(sequences), len(unique_words)
 
         # Create dictionaries so that we can go from word to index and back
         # If a word is not in our vocabulary, we assign it to token 'UNK'
-        word_to_idx = defaultdict(lambda: vocab_size - 1)
-        idx_to_word = defaultdict(lambda: 'UNK')
+        self.word_to_idx = defaultdict(lambda: self.vocab_size - 1)
+        self.idx_to_word = defaultdict(lambda: 'UNK')
 
         # Fill dictionaries
         for idx, word in enumerate(unique_words):
             # YOUR CODE HERE!
-            word_to_idx[word] = idx 
-            idx_to_word[idx] = word 
-
-        return word_to_idx, idx_to_word, num_sentences, vocab_size
+            self.word_to_idx[word] = idx 
+            self.idx_to_word[idx] = word 
 
 
 
@@ -164,25 +162,18 @@ class Dataset:
 
     def generate_dataset(self):
         sequences = self.__generate_sequences()
-        self.word_to_idx, self.idx_to_word, self.num_sequences, self.vocab_size = self.sequences_to_dicts(sequences)
+        self.__sequences_to_dicts(sequences)
         self.training_set, self.test_set = self.__create_datasets(sequences)
-
-        self.test_word = self.one_hot_encode(self.word_to_idx['a'])
-        #  print(f'Our one-hot encoding of \'a\' has shape {test_word.shape}.')
-        self.test_sentence = self.one_hot_encode_sequence(['a', 'b'])
-        #  print(f'Our one-hot encoding of \'a b\' has shape {test_sentence.shape}.')
-
 
 
 if __name__ == "__main__":
     dataset = Dataset()
     dataset.generate_dataset()
-    print(dataset.training_set.inputs)
     #  sequences = __generate_sequences()  # ['a','a','b','EOS']
     #  print(f'The sequence[0] example: {sequences[0]}')
     #  print(f'The sequence[-1] example: {sequences[-1]}')
     #
-    #  word_to_idx, idx_to_word, num_sequences, vocab_size = self.sequences_to_dicts(sequences)
+    #  word_to_idx, idx_to_word, num_sequences, vocab_size = self.__sequences_to_dicts(sequences)
     #  print(f'We have {num_sequences} sentences and {len(word_to_idx)} unique tokens in our dataset (including UNK).\n')
     #  for key, value in word_to_idx.items():
     #      print(f'The index of {key} is', value)
