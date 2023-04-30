@@ -1,7 +1,8 @@
 #import pandas as pd
-#import matplotlib.pyplot as plt
+#  import matplotlib.pyplot as plt
 from activation_functions import tanh_activation, sigmoid, softmax
 import numpy as np
+import dataset
 
 class LSTM:
     def __init__(self, hidden_size, vocab_size):
@@ -68,68 +69,86 @@ class LSTM:
     def forward(self, inputs, h_prev, C_prev):
         """
         Arguments:
-        x -- your input data at timestep "t", numpy array of shape (n_x, m).
-        h_prev -- stm at timestep "t-1", numpy array of shape (n_a, m)
-        C_prev -- ltm at timestep "t-1", numpy array of shape (n_a, m)
+            x -- your input data at timestep "t", numpy array of shape (n_x, m).
+            h_prev -- stm at timestep "t-1", numpy array of shape (n_a, m)
+            C_prev -- ltm at timestep "t-1", numpy array of shape (n_a, m)
         Returns:
             z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s -- lists of size m containing the computations in each forward pass
-        outputs -- prediction at timestep "t", numpy array of shape (n_v, m)
+            outputs -- prediction at timestep "t", numpy array of shape (n_v, m)
         """
 
         # Save a list of computations for each of the components in the LSTM
-        x_s, z_s, f_s, i_s,  = [], [] ,[], []
-        g_s, C_s, o_s, h_s = [], [] ,[], []
-        v_s, output_s =  [], [] 
+        forward_pass = {"x_s": [], "z_s": [], "f_s": [], "i_s": [], "g_s": [], "C_s": [], "o_s": [], "h_s": [], "v_s": [], "output_s": []}
 
         # Append the initial cell and hidden state to their respective lists
-        h_s.append(h_prev)
-        C_s.append(C_prev)
+        forward_pass["h_s"].append(h_prev)
+        forward_pass["C_s"].append(C_prev)
 
         for x in inputs:
 
             # Concatenate input and hidden state
             z = np.row_stack((h_prev, x))
-            z_s.append(z)
+            forward_pass["z_s"].append(z)
 
             # Calculate forget gate
-            # YOUR CODE HERE!
             f = sigmoid(np.dot(self.W_f, z) + self.b_f) 
-            f_s.append(f)
+            forward_pass["f_s"].append(f)
 
             # Calculate input gate
-            # YOUR CODE HERE!
             i = sigmoid(np.dot(self.W_i, z) + self.b_i) 
-            i_s.append(i)
+            forward_pass["i_s"].append(i)
 
             # Calculate candidate
             g = tanh_activation(np.dot(self.W_g, z) + self.b_g)
-            g_s.append(g)
+            forward_pass["g_s"].append(g)
 
             # Calculate memory state
-            # YOUR CODE HERE!
             C_prev = np.multiply(C_prev, f) + np.multiply(g,i)
-            C_s.append(C_prev)
+            forward_pass["C_s"].append(C_prev)
 
             # Calculate output gate
-            # YOUR CODE HERE!
             o = sigmoid(np.dot(self.W_o, z) + self.b_o)
-            o_s.append(o)
+            forward_pass["o_s"].append(o)
 
             # Calculate hidden state
             h_prev = o * tanh_activation(C_prev)
-            h_s.append(h_prev)
+            forward_pass["h_s"].append(h_prev)
 
             # Calculate logits
             v = np.dot(self.W_v, h_prev) + self.b_v
-            v_s.append(v)
+            forward_pass["v_s"].append(v)
 
             # Calculate softmax
             output = softmax(v)
-            output_s.append(output)
+            forward_pass["output_s"].append(output)
 
-        return z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, output_s
+        return forward_pass 
 
 
 if __name__ == "__main__":
     lstm = LSTM(1,1)
     print(lstm.W_f)
+    # Get first sentence in test set
+    inputs, targets = test_set[1]
+
+    # One-hot encode input and target sequence
+    inputs_one_hot = one_hot_encode_sequence(inputs, vocab_size)
+    targets_one_hot = one_hot_encode_sequence(targets, vocab_size)
+
+    # Initialize hidden state as zeros
+    h = np.zeros((hidden_size, 1))
+    c = np.zeros((hidden_size, 1))
+
+    # Forward pass
+    z_s, f_s, i_s, g_s, C_s, o_s, h_s, v_s, outputs = forward(inputs_one_hot, h, c, params)
+
+    output_sentence = [idx_to_word[np.argmax(output)] for output in outputs]
+    print('Input sentence:')
+    print(inputs)
+
+    print('\nTarget sequence:')
+    print(targets)
+
+    print('\nPredicted sequence:')
+    print([idx_to_word[np.argmax(output)] for output in outputs])
+
