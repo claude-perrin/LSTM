@@ -61,7 +61,7 @@ class Dataset:
         # Flatten the dataset
         all_words = self.__flatten(sequences)
 
-        # Count number of word occurences
+        # Count number of word occurences in idctionary #TODO can be improved
         word_count = defaultdict(int)
         for word in all_words:
             word_count[word] += 1
@@ -76,6 +76,7 @@ class Dataset:
         unique_words.append('UNK')
 
         # Count number of sequences and number of unique words
+        #TODO can be improved, num_sentences can be saved earlier
         self.num_sentences, self.vocab_size = len(sequences), len(unique_words)
 
         # Create dictionaries so that we can go from word to index and back
@@ -85,19 +86,20 @@ class Dataset:
 
         # Fill dictionaries
         for idx, word in enumerate(unique_words):
-            # YOUR CODE HERE!
-            self.word_to_idx[word] = idx 
+            self.word_to_idx[word] = idx
             self.idx_to_word[idx] = word 
 
 
 
-    def __create_datasets(self, sequences, p_train=0.8, p_test=0.2):
+    def __create_datasets(self, sequences, p_train=0.8, p_val=0.1, p_test=0.1):
         # Define partition sizes
         num_train = int(len(sequences) * p_train)
         num_test = int(len(sequences) * p_test)
+        num_val = int(len(sequences) * p_val)
 
         # Split sequences into partitions
         sequences_train = sequences[:num_train]
+        sequences_val = sequences[num_train:num_train + num_val]
         sequences_test = sequences[-num_test:]
 
         def __get_inputs_targets_from_sequences(sequences):
@@ -114,13 +116,15 @@ class Dataset:
 
         # Get inputs and targets for each partition
         inputs_train, targets_train = __get_inputs_targets_from_sequences(sequences_train)
+        inputs_val, targets_val = __get_inputs_targets_from_sequences(sequences_val)
         inputs_test, targets_test = __get_inputs_targets_from_sequences(sequences_test)
 
         # Create datasets
         training_set = self.__Sequence(inputs_train, targets_train)
+        validation_set = self.__Sequence(inputs_val, targets_val)
         test_set = self.__Sequence(inputs_test, targets_test)
 
-        return training_set, test_set
+        return training_set, validation_set, test_set
 
 
     def one_hot_encode(self,idx):
@@ -163,34 +167,4 @@ class Dataset:
     def generate_dataset(self):
         sequences = self.__generate_sequences()
         self.__sequences_to_dicts(sequences)
-        self.training_set, self.test_set = self.__create_datasets(sequences)
-
-
-if __name__ == "__main__":
-    dataset = Dataset()
-    dataset.generate_dataset()
-    #  sequences = __generate_sequences()  # ['a','a','b','EOS']
-    #  print(f'The sequence[0] example: {sequences[0]}')
-    #  print(f'The sequence[-1] example: {sequences[-1]}')
-    #
-    #  word_to_idx, idx_to_word, num_sequences, vocab_size = self.__sequences_to_dicts(sequences)
-    #  print(f'We have {num_sequences} sentences and {len(word_to_idx)} unique tokens in our dataset (including UNK).\n')
-    #  for key, value in word_to_idx.items():
-    #      print(f'The index of {key} is', value)
-    #  print(f'The word corresponding to index 1 is \'{idx_to_word[1]}\'')
-
-    #  training_set, test_set = create_datasets(sequences)
-    #  print(f'We have {len(training_set)} samples in the training set.')
-    #  print(f'We have {len(test_set)} samples in the test set.')
-    #  print(f'training set inputs[0]: {training_set.inputs[0]}')
-    #  print(f'training set target[0]: {training_set.targets[0]}')
-    #  print(f'training set inputs[1]: {training_set.inputs[1]}')
-    #  print(f'training set target[1]: {training_set.targets[1]}')
-    #
-    #  test_word = one_hot_encode(word_to_idx['a'], vocab_size)
-    #  print(f'Our one-hot encoding of \'a\' has shape {test_word.shape}.')
-    #
-    #
-    #  test_sentence = one_hot_encode_sequence(['a', 'b'], vocab_size)
-    #  print(f'Our one-hot encoding of \'a b\' has shape {test_sentence.shape}.')
-
+        self.training_set, self.validation_set, self.test_set = self.__create_datasets(sequences)
