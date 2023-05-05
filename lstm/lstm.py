@@ -1,5 +1,5 @@
 # import pandas as pd
-#  import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from activation_functions import tanh_activation, sigmoid, softmax
 import numpy as np
 from dataset import Dataset
@@ -8,10 +8,6 @@ from sklearn.metrics import mean_squared_error
 
 class LSTM:
     def __init__(self, hidden_size, vocab_size):
-        self.ltm = 0
-        self.stm = 0
-
-        z_size = hidden_size + vocab_size
 
         """
         Initializes our LSTM network.
@@ -22,6 +18,10 @@ class LSTM:
             `z_size`: the dimensions of the concatenated input 
         """
         # Weight matrix (forget gate)
+        self.ltm = 0
+        self.stm = 0
+
+        z_size = hidden_size + vocab_size
         w_f = np.zeros((hidden_size, z_size))
         # Bias for forget gate
         self.b_f = np.zeros((hidden_size, 1))
@@ -41,7 +41,6 @@ class LSTM:
         self.b_g = np.zeros((hidden_size, 1))
 
         # Weight matrix of the output gate
-        # TODO Not sure
         w_o = np.zeros((hidden_size, z_size))
 
         # Bias for output gate
@@ -60,23 +59,12 @@ class LSTM:
         self.W_o = self.__init_orthogonal(w_o)
         self.W_v = self.__init_orthogonal(w_v)
 
-        print('W_i:', self.W_i.ndim)
-        print('W_g:', self.W_g.ndim)
-        print('W_o:', self.W_o.ndim)
-        print('W_v:', self.W_v.ndim)
-        print('b_i:', self.b_i.ndim)
-        print('b_g:', self.b_g.ndim)
-        print('W_f:', self.W_f.ndim)
-        print('b_o:', self.b_o.ndim)
-        print('b_v:', self.b_v.ndim)
+    def get_weights(self):
+        return [self.W_f, self.W_i, self.W_g, self.W_o, self.W_v]
 
     def __init_orthogonal(self, param):
         """
         Initializes weight parameters orthogonally.
-        This is a common initiailization for recurrent neural networks.
-
-        Refer to this paper for an explanation of this initialization:
-            https://arxiv.org/abs/1312.6120
         """
         if param.ndim < 2:
             raise ValueError("Only parameters with 2 or more dimensions are supported.")
@@ -185,38 +173,22 @@ class LSTM:
         Computes cross entropy between targets (encoded as one-hot vectors)
         and predictions.
         Input: predictions (N, k) ndarray
-               targets (N, k) ndarray
+        targets (N, k) ndarray
         Returns: scalar
         """
         predictions = np.clip(predictions, epsilon, 1. - epsilon)
         N = predictions.shape[0]
         ce = -np.sum(targets * np.log(predictions + 1e-9)) / N
         return ce
+
+
+
     def backward(self, forward_pass, targets, h_prev, c_prev):
         """
         Arguments:
-        z_s -- your concatenated input data  as a list of size m.
-        f_s -- your forget gate computations as a list of size m.
-        i_s -- your input gate computations as a list of size m.
-        g_s -- your candidate computations as a list of size m.
-        C_s -- your Cell states as a list of size m+1.
-        o_s -- your output gate computations as a list of size m.
-        h_s -- your Hidden state computations as a list of size m+1.
-        v_s -- your logit computations as a list of size m.
-        outputs -- your outputs as a list of size m.
-        targets -- your targets as a list of size m.
-        W_f -- Weight matrix of the forget gate, numpy array of shape (n_a, n_a + n_x)
-        b_f -- Bias of the forget gate, numpy array of shape (n_a, 1)
-        W_i -- Weight matrix of the update gate, numpy array of shape (n_a, n_a + n_x)
-        b_i -- Bias of the update gate, numpy array of shape (n_a, 1)
-        W_g -- Weight matrix of the first "tanh", numpy array of shape (n_a, n_a + n_x)
-        b_g --  Bias of the first "tanh", numpy array of shape (n_a, 1)
-        W_o -- Weight matrix of the output gate, numpy array of shape (n_a, n_a + n_x)
-        b_o --  Bias of the output gate, numpy array of shape (n_a, 1)
-        W_v -- Weight matrix relating the hidden-state to the output, numpy array of shape (n_v, n_a)
-        b_v -- Bias relating the hidden-state to the output, numpy array of shape (n_v, 1)
+            targets -- your targets as a list of size m.
         Returns:
-        loss -- crossentropy loss for all elements in output
+            loss -- crossentropy loss for all elements in output
         grads -- lists of gradients of every element in p
         """
 
@@ -304,10 +276,100 @@ class LSTM:
         return loss, grads
 
 
+    def update_parameters(self, grads, lr=0.25):
+        # Take a step
+        weights = self.get_weights()
+        for param, grad in zip(weights, grads):
+            param -= lr * grad
+
+
+def train(dataset, hidden_size, vocab_size):
+
+    # Hyper-parameters
+    num_epochs = 20
+
+    # Initialize a new network
+    lstm = LSTM(hidden_size=hidden_size, vocab_size=vocab_size)
+
+    # Initialize hidden state as zeros
+    hidden_state = np.zeros((hidden_size, 1))
+
+    # Track loss
+    training_loss, validation_loss = [], []
+    
+    # For each epoch
+    for i in range(num_epochs):
+
+        # Track loss
+        epoch_training_loss = 0
+        epoch_validation_loss = 0
+
+        # For each sentence in validation set
+        for inputs, targets in dataset.validation_set:
+
+            # One-hot encode input and target sequence
+            inputs_one_hot = dataset.one_hot_encode_sequence(inputs)
+            targets_one_hot = dataset.one_hot_encode_sequence(targets)
+
+            # Initialize hidden state and cell state as zeros
+            h = np.zeros((hidden_size, 1))
+            c = np.zeros((hidden_size, 1))
+
+            # Forward pass
+            forward_pass = lstm.forward(inputs_one_hot, h, c)
+
+            # Backward pass
+            loss, _ = lstm.backward(forward_pass, targets_one_hot, h, c)
+
+            #  print(f'Input sentence {i}:')
+            #  print(inputs)
+            #
+            #  print(f'\nTarget sequence {i}:')
+            #  print(targets)
+            #
+            #  print('\nPredicted sequence:')
+            #  print([dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]])
+            # Update loss
+            epoch_validation_loss += loss
+        # For each sentence in training set
+        for inputs, targets in dataset.training_set:
+
+            # One-hot encode input and target sequence
+            inputs_one_hot = dataset.one_hot_encode_sequence(inputs)
+            targets_one_hot = dataset.one_hot_encode_sequence(targets)
+
+            # Initialize hidden state and cell state as zeros
+            h = np.zeros((hidden_size, 1))
+            c = np.zeros((hidden_size, 1))
+
+            # Forward pass
+            forward_pass = lstm.forward(inputs_one_hot, h, c)
+
+            # Backward pass
+            loss, grads = lstm.backward(forward_pass, targets_one_hot, h, c)
+
+            # Update parameters
+            params = lstm.update_parameters(grads)
+
+            # Update loss
+            output_sentence = [dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]]
+
+            epoch_training_loss += loss
+
+        # Save loss for plot
+        training_loss.append(epoch_training_loss / len(dataset.training_set))
+        validation_loss.append(epoch_validation_loss / len(dataset.validation_set))
+
+        # Print loss every 10 epochs
+        if i % 10 == 0:
+            print(f'Epoch {i}, training loss: {training_loss[-1]}, validation loss: {validation_loss[-1]}')
+    return training_loss, validation_loss
+
+
 if __name__ == "__main__":
     dataset = Dataset()
     dataset.generate_dataset()
-    hidden_size = 1  # Number of dimensions in the hidden state
+    hidden_size = 20  # Number of dimensions in the hidden state
     lstm = LSTM(hidden_size, dataset.vocab_size)
     # Get first sentence in test set
     inputs, targets = dataset.test_set.inputs[1], dataset.test_set.targets[1]
@@ -316,24 +378,33 @@ if __name__ == "__main__":
     inputs_one_hot = dataset.one_hot_encode_sequence(inputs)
     targets_one_hot = dataset.one_hot_encode_sequence(targets)
 
-    # Initialize hidden state as zeros
-    h = np.zeros((hidden_size, 1))
-    c = np.zeros((hidden_size, 1))
+    #  # Initialize hidden state as zeros
+    #  h = np.zeros((hidden_size, 1))
+    #  c = np.zeros((hidden_size, 1))
 
     # Forward pass
-    forward_pass = lstm.forward(inputs_one_hot, h, c)
+    #  forward_pass = lstm.forward(inputs_one_hot, h, c)
+    #
+    #  output_sentence = [dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]]
+    #  print('Input sentence:')
+    #  print(inputs)
+    #
+    #  print('\nTarget sequence:')
+    #  print(targets)
+    #
+    #  print('\nPredicted sequence:')
+    #  print([dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]])
+    #
+    #  loss, grads = lstm.backward(forward_pass, targets_one_hot, h, c)
+    #
+    #  print('We get a loss of:')
+    #  print(loss)
 
-    output_sentence = [dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]]
-    print('Input sentence:')
-    print(inputs)
-
-    print('\nTarget sequence:')
-    print(targets)
-
-    print('\nPredicted sequence:')
-    print([dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]])
-
-    loss, grads = lstm.backward(forward_pass, targets_one_hot, h, c)
-
-    print('We get a loss of:')
-    print(loss)
+    training_loss, validation_loss = train(dataset,hidden_size=hidden_size,vocab_size=dataset.vocab_size)
+    epoch = np.arange(len(training_loss))
+    plt.figure()
+    plt.plot(epoch, training_loss, 'r', label='Training loss',)
+    plt.plot(epoch, validation_loss, 'b', label='Validation loss')
+    plt.legend()
+    plt.xlabel('Epoch'), plt.ylabel('MeanSquare loss')
+    plt.show()
