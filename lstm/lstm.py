@@ -378,9 +378,6 @@ if __name__ == "__main__":
     inputs_one_hot = dataset.one_hot_encode_sequence(inputs)
     targets_one_hot = dataset.one_hot_encode_sequence(targets)
 
-    #  # Initialize hidden state as zeros
-    #  h = np.zeros((hidden_size, 1))
-    #  c = np.zeros((hidden_size, 1))
 
     # Forward pass
     #  forward_pass = lstm.forward(inputs_one_hot, h, c)
