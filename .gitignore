@@ -3,3 +3,4 @@
 Project_card.*
 *.csv*
 __pycache__*
+.idea/*
