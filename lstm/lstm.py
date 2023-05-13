@@ -1,57 +1,47 @@
 # import pandas as pd
 #  import matplotlib.pyplot as plt
 from activation_functions import tanh_activation, sigmoid, softmax
+from optimizer import AdamOptim as Adam
 import numpy as np
-from dataset import Dataset
 from sklearn.metrics import mean_squared_error
 
 
 class LSTM:
-    def __init__(self, hidden_size, vocab_size):
-        self.ltm = 0
-        self.stm = 0
-
-        z_size = hidden_size + vocab_size
-
+    def __init__(self, hidden_size, vocab_size, optimizer=Adam):
         """
         Initializes our LSTM network.
 
         Args:
             `hidden_size`: the dimensions of the hidden state
             `vocab_size`: the dimensions of our vocabulary
-            `z_size`: the dimensions of the concatenated input 
+
+        W_f - forget gate
+        W_i - input gate
+        W_g - candidate ltm
+        W_o - output gate
+        W_v - weight matrix relating the hidden-state to the output
         """
-        # Weight matrix (forget gate)
+        self.ltm = 0
+        self.stm = 0
+        self.hidden_size = hidden_size
+        self.vocab_size = vocab_size
+        self.optimizer = optimizer
+
+        z_size = hidden_size + vocab_size
+
         w_f = np.zeros((hidden_size, z_size))
-        # Bias for forget gate
         self.b_f = np.zeros((hidden_size, 1))
 
-        # Weight matrix (input gate)
-
         w_i = np.zeros((hidden_size, z_size))
-
-        # Bias for input gate
         self.b_i = np.zeros((hidden_size, 1))
 
-        # Weight matrix (candidate)
-
         w_g = np.zeros((hidden_size, z_size))
-
-        # Bias for candidate
         self.b_g = np.zeros((hidden_size, 1))
 
-        # Weight matrix of the output gate
-        # TODO Not sure
         w_o = np.zeros((hidden_size, z_size))
-
-        # Bias for output gate
         self.b_o = np.zeros((hidden_size, 1))
 
-        # Weight matrix relating the hidden-state to the output
-
         w_v = np.zeros((vocab_size, hidden_size))
-
-        # Bias for logits
         self.b_v = np.zeros((vocab_size, 1))
 
         self.W_f = self.__init_orthogonal(w_f)
@@ -59,16 +49,6 @@ class LSTM:
         self.W_g = self.__init_orthogonal(w_g)
         self.W_o = self.__init_orthogonal(w_o)
         self.W_v = self.__init_orthogonal(w_v)
-
-        print('W_i:', self.W_i.ndim)
-        print('W_g:', self.W_g.ndim)
-        print('W_o:', self.W_o.ndim)
-        print('W_v:', self.W_v.ndim)
-        print('b_i:', self.b_i.ndim)
-        print('b_g:', self.b_g.ndim)
-        print('W_f:', self.W_f.ndim)
-        print('b_o:', self.b_o.ndim)
-        print('b_v:', self.b_v.ndim)
 
     def __init_orthogonal(self, param):
         """
@@ -103,6 +83,15 @@ class LSTM:
 
         return new_param
 
+
+    def get_parameters(self):
+        """
+        Returns weights and biases as 2d array
+
+        """
+        return [[self.W_f, self.b_f], [self.W_i, self.b_i], [self.W_g, self.b_g], [self.W_o, self.b_o], [self.W_v, self.b_v]]
+
+
     def __clip_gradient_norm(self, grads, max_norm=0.25):
         """
         Clips gradients to have a maximum norm of `max_norm`.
@@ -113,7 +102,7 @@ class LSTM:
         total_norm = 0
         # Calculate the L2 norm squared for each gradient and add them to the total norm
         for grad in grads:
-            grad_norm = np.sum(np.power(grad, 2))
+            grad_norm = np.sum(np.power(grad[0], 2))
             total_norm += grad_norm
         total_norm = np.sqrt(total_norm)
         # Calculate clipping coeficient
@@ -121,7 +110,7 @@ class LSTM:
         # If the total norm is larger than the maximum allowable norm, then clip the gradient
         if clip_coef < 1:
             for grad in grads:
-                grad *= clip_coef
+                grad[0] *= clip_coef
         return grads
 
     def forward(self, inputs, h_prev, C_prev):
@@ -192,6 +181,7 @@ class LSTM:
         N = predictions.shape[0]
         ce = -np.sum(targets * np.log(predictions + 1e-9)) / N
         return ce
+
     def backward(self, forward_pass, targets, h_prev, c_prev):
         """
         Arguments:
@@ -205,22 +195,11 @@ class LSTM:
         v_s -- your logit computations as a list of size m.
         outputs -- your outputs as a list of size m.
         targets -- your targets as a list of size m.
-        W_f -- Weight matrix of the forget gate, numpy array of shape (n_a, n_a + n_x)
-        b_f -- Bias of the forget gate, numpy array of shape (n_a, 1)
-        W_i -- Weight matrix of the update gate, numpy array of shape (n_a, n_a + n_x)
-        b_i -- Bias of the update gate, numpy array of shape (n_a, 1)
-        W_g -- Weight matrix of the first "tanh", numpy array of shape (n_a, n_a + n_x)
-        b_g --  Bias of the first "tanh", numpy array of shape (n_a, 1)
-        W_o -- Weight matrix of the output gate, numpy array of shape (n_a, n_a + n_x)
-        b_o --  Bias of the output gate, numpy array of shape (n_a, 1)
-        W_v -- Weight matrix relating the hidden-state to the output, numpy array of shape (n_v, n_a)
-        b_v -- Bias relating the hidden-state to the output, numpy array of shape (n_v, 1)
         Returns:
         loss -- crossentropy loss for all elements in output
         grads -- lists of gradients of every element in p
         """
 
-        # Unpack parameters
         # Initialize gradients as zero
         W_f_d = np.zeros_like(self.W_f)
         b_f_d = np.zeros_like(self.b_f)
@@ -293,47 +272,27 @@ class LSTM:
 
             # Compute the derivative of the input and update the gradients of the previous hidden and cell state
             dz = (np.dot(self.W_f.T, df) + np.dot(self.W_i.T, di) + np.dot(self.W_g.T, dg) + np.dot(self.W_o.T, do))
-            dh_prev = dz[:hidden_size, :]
+
+            # TODO why do we need it
+            dh_prev = dz[:self.hidden_size, :]
             dC_prev = forward_pass["f_s"][t] * dC
 
-        grads = W_f_d, W_i_d, W_g_d, W_o_d, W_v_d, b_f_d, b_i_d, b_g_d, b_o_d, b_v_d
+        grads = [[W_f_d, b_f_d], [W_i_d, b_i_d], [W_g_d, b_g_d], [W_o_d, b_o_d], [W_v_d, b_v_d]]
 
         # Clip gradients
         grads = self.__clip_gradient_norm(grads)
 
         return loss, grads
 
+    def update_parameters(self, grads, lr=0.04):
+        # Take a step
+        parameters = self.get_parameters()
+        for parameter, grad in zip(parameters, grads):
+            parameter[0] -= lr * grad[0]
+            #  dw,db = self.optimizer().update(w=parameter[0], b=parameter[1], dw=grad[0], db=grad[1])
+            #  parameter[0] -= dw
+            #  parameter[1] -= db
 
 if __name__ == "__main__":
-    dataset = Dataset()
-    dataset.generate_dataset()
-    hidden_size = 1  # Number of dimensions in the hidden state
-    lstm = LSTM(hidden_size, dataset.vocab_size)
-    # Get first sentence in test set
-    inputs, targets = dataset.test_set.inputs[1], dataset.test_set.targets[1]
+    lstm = LSTM(10, 4)
 
-    # One-hot encode input and target sequence
-    inputs_one_hot = dataset.one_hot_encode_sequence(inputs)
-    targets_one_hot = dataset.one_hot_encode_sequence(targets)
-
-    # Initialize hidden state as zeros
-    h = np.zeros((hidden_size, 1))
-    c = np.zeros((hidden_size, 1))
-
-    # Forward pass
-    forward_pass = lstm.forward(inputs_one_hot, h, c)
-
-    output_sentence = [dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]]
-    print('Input sentence:')
-    print(inputs)
-
-    print('\nTarget sequence:')
-    print(targets)
-
-    print('\nPredicted sequence:')
-    print([dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]])
-
-    loss, grads = lstm.backward(forward_pass, targets_one_hot, h, c)
-
-    print('We get a loss of:')
-    print(loss)

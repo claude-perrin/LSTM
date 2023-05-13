@@ -2,10 +2,48 @@ import numpy as np
 from collections import defaultdict
 
 
+class Sequence():
+    def __init__(self, inputs, targets):
+        self.inputs = inputs
+        self.targets = targets
+
+    def __len__(self):
+        # Return the size of the dataset
+        return len(self.targets)
+
+    def __getitem__(self, index):
+        # Retrieve inputs and targets at the given index
+        X = self.inputs[index]
+        y = self.targets[index]
+
+        return X, y
+
+
+def generate_sequences(num_sequences=256):
+    """
+    Generates a number of sequences as our dataset.
+
+    Args:
+        `num_sequences`: the number of sequences to be generated.
+    Returns a list of sequences (sentences).
+
+    f.e. sample = "a,a,a,b,b,b,b,EOS"
+
+    """
+    samples = []
+
+    for _ in range(num_sequences): 
+        num_tokens = np.random.randint(1, 12)
+        sample = ['a'] * num_tokens + ['b'] * num_tokens + ['EOS']
+        samples.append(sample)
+
+    return samples
+
+
 class Dataset: 
 
     def __init__(self):
-        np.random.seed(42)
+        np.random.seed(1337)
         self.word_to_idx = dict()
         self.idx_to_word = dict()
         self.num_sequences = 0
@@ -13,55 +51,29 @@ class Dataset:
         self.training_set = []
         self.test_set = []
 
-    class __Sequence():
-        def __init__(self, inputs, targets):
-            self.inputs = inputs
-            self.targets = targets
 
-        def __len__(self):
-            # Return the size of the dataset
-            return len(self.targets)
+    def generate_dataset(self,sequences):
+        self.__sequences_to_dicts(sequences)
+        self.training_set, self.validation_set, self.test_set = self.__create_datasets(sequences)
 
-        def __getitem__(self, index):
-            # Retrieve inputs and targets at the given index
-            X = self.inputs[index]
-            y = self.targets[index]
-
-            return X, y
-
-    def __generate_sequences(self,num_sequences=2**8):
-        """
-        Generates a number of sequences as our dataset.
-
-        Args:
-            `num_sequences`: the number of sequences to be generated.
-
-        Returns a list of sequences.
-        """
-        samples = []
-
-        for _ in range(num_sequences): 
-            num_tokens = np.random.randint(1, 12)
-            sample = ['a'] * num_tokens + ['b'] * num_tokens + ['EOS']
-            samples.append(sample)
-
-        return samples
-
-
-    def __flatten(self,sequences):
-        return [item for sublist in sequences for item in sublist]
 
 
     def __sequences_to_dicts(self,sequences):
         """
         Creates word_to_idx and idx_to_word dictionaries for a list of sequences.
+        f.e.
+        {
+            a: 1
+            b: 2
+            EOS: 3
+        }
         """
-        # A bit of Python-magic to flatten a nested list
 
         # Flatten the dataset
         all_words = self.__flatten(sequences)
 
-        # Count number of word occurences in idctionary #TODO can be improved
+        # Count number of word occurences in dictionary 
+        # TODO can be improved
         word_count = defaultdict(int)
         for word in all_words:
             word_count[word] += 1
@@ -76,7 +88,7 @@ class Dataset:
         unique_words.append('UNK')
 
         # Count number of sequences and number of unique words
-        #TODO can be improved, num_sentences can be saved earlier
+        # TODO can be improved, num_sentences can be saved earlier
         self.num_sentences, self.vocab_size = len(sequences), len(unique_words)
 
         # Create dictionaries so that we can go from word to index and back
@@ -88,6 +100,15 @@ class Dataset:
         for idx, word in enumerate(unique_words):
             self.word_to_idx[word] = idx
             self.idx_to_word[idx] = word 
+
+
+    def __flatten(self,sequences):
+        """
+        From 2d array makes 1d array
+
+        f.e. [[a,a,b,EOS],[a,a,a,b,b,EOS]] -> [a,a,b,EOS,a,a,a,b,b,EOS]
+        """
+        return [item for sublist in sequences for item in sublist]
 
 
 
@@ -103,7 +124,6 @@ class Dataset:
         sequences_test = sequences[-num_test:]
 
         def __get_inputs_targets_from_sequences(sequences):
-            # Define empty lists
             inputs, targets = [], []
 
             # Append inputs and targets s.t. both lists contain L-1 words of a sentence of length L
@@ -120,14 +140,33 @@ class Dataset:
         inputs_test, targets_test = __get_inputs_targets_from_sequences(sequences_test)
 
         # Create datasets
-        training_set = self.__Sequence(inputs_train, targets_train)
-        validation_set = self.__Sequence(inputs_val, targets_val)
-        test_set = self.__Sequence(inputs_test, targets_test)
+        training_set = Sequence(inputs_train, targets_train)
+        validation_set = Sequence(inputs_val, targets_val)
+        test_set = Sequence(inputs_test, targets_test)
 
         return training_set, validation_set, test_set
 
 
-    def one_hot_encode(self,idx):
+    def one_hot_encode_sequence(self, sequence):
+        """
+        One-hot encodes a sequence of words given a fixed vocabulary size.
+
+        Args:
+            `sentence`: a list of words to encode
+            `vocab_size`: the size of the vocabulary
+
+        Returns a 3-D numpy array of shape (num words, vocab size, 1).
+        """
+        # Encode each word in the sentence
+        encoding = np.array([self.__one_hot_encode(self.word_to_idx[word]) for word in sequence])
+
+        # Reshape encoding s.t. it has shape (num words, vocab size, 1)
+        encoding = encoding.reshape(encoding.shape[0], encoding.shape[1], 1)
+
+        return encoding  # [[[0],[0],[0],[1.0]],[[1.0],[0],[0],[0]]]
+
+
+    def __one_hot_encode(self,idx):
         """
         One-hot encodes a single word given its index and the size of the vocabulary.
 
@@ -145,26 +184,3 @@ class Dataset:
 
         return one_hot   # 0,0,0,1.0
 
-
-    def one_hot_encode_sequence(self, sequence):
-        """
-        One-hot encodes a sequence of words given a fixed vocabulary size.
-
-        Args:
-            `sentence`: a list of words to encode
-            `vocab_size`: the size of the vocabulary
-
-        Returns a 3-D numpy array of shape (num words, vocab size, 1).
-        """
-        # Encode each word in the sentence
-        encoding = np.array([self.one_hot_encode(self.word_to_idx[word]) for word in sequence])
-
-        # Reshape encoding s.t. it has shape (num words, vocab size, 1)
-        encoding = encoding.reshape(encoding.shape[0], encoding.shape[1], 1)
-
-        return encoding  # [[[0],[0],[0],[1.0]],[[1.0],[0],[0],[0]]]
-
-    def generate_dataset(self):
-        sequences = self.__generate_sequences()
-        self.__sequences_to_dicts(sequences)
-        self.training_set, self.validation_set, self.test_set = self.__create_datasets(sequences)
