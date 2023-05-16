@@ -2,7 +2,7 @@ import numpy as np
 from collections import defaultdict
 
 
-class Sequence():
+class Sequence:
     def __init__(self, inputs, targets):
         self.inputs = inputs
         self.targets = targets
@@ -32,15 +32,15 @@ def generate_sequences(num_sequences=256):
     """
     samples = []
 
-    for _ in range(num_sequences): 
-        num_tokens = np.random.randint(1, 12)
+    for _ in range(num_sequences):
+        num_tokens = np.random.randint(1, 9)
         sample = ['a'] * num_tokens + ['b'] * num_tokens + ['EOS']
         samples.append(sample)
 
     return samples
 
 
-class Dataset: 
+class Dataset:
 
     def __init__(self):
         np.random.seed(1337)
@@ -50,15 +50,13 @@ class Dataset:
         self.vocab_size = 0
         self.training_set = []
         self.test_set = []
+        self.validation_set = []
 
-
-    def generate_dataset(self,sequences):
+    def generate_dataset(self, sequences):
         self.__sequences_to_dicts(sequences)
         self.training_set, self.validation_set, self.test_set = self.__create_datasets(sequences)
 
-
-
-    def __sequences_to_dicts(self,sequences):
+    def __sequences_to_dicts(self, sequences):
         """
         Creates word_to_idx and idx_to_word dictionaries for a list of sequences.
         f.e.
@@ -99,18 +97,15 @@ class Dataset:
         # Fill dictionaries
         for idx, word in enumerate(unique_words):
             self.word_to_idx[word] = idx
-            self.idx_to_word[idx] = word 
+            self.idx_to_word[idx] = word
 
-
-    def __flatten(self,sequences):
+    def __flatten(self, sequences):
         """
         From 2d array makes 1d array
 
         f.e. [[a,a,b,EOS],[a,a,a,b,b,EOS]] -> [a,a,b,EOS,a,a,a,b,b,EOS]
         """
         return [item for sublist in sequences for item in sublist]
-
-
 
     def __create_datasets(self, sequences, p_train=0.8, p_val=0.1, p_test=0.1):
         # Define partition sizes
@@ -146,7 +141,6 @@ class Dataset:
 
         return training_set, validation_set, test_set
 
-
     def one_hot_encode_sequence(self, sequence):
         """
         One-hot encodes a sequence of words given a fixed vocabulary size.
@@ -165,8 +159,7 @@ class Dataset:
 
         return encoding  # [[[0],[0],[0],[1.0]],[[1.0],[0],[0],[0]]]
 
-
-    def __one_hot_encode(self,idx):
+    def __one_hot_encode(self, idx):
         """
         One-hot encodes a single word given its index and the size of the vocabulary.
 
@@ -182,5 +175,4 @@ class Dataset:
         # Set the appropriate element to one
         one_hot[idx] = 1.0
 
-        return one_hot   # 0,0,0,1.0
-
+        return one_hot  # 0,0,0,1.0

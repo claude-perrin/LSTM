@@ -13,7 +13,7 @@ def train(dataset, hidden_size, vocab_size):
     lstm = LSTM(hidden_size=hidden_size, vocab_size=vocab_size)
 
     # Initialize hidden state as zeros
-    hidden_state = np.zeros((hidden_size, 1))
+   #hidden_state = np.zeros((hidden_size, 1))
 
     # Track loss
     training_loss, validation_loss = [], []
@@ -40,11 +40,12 @@ def train(dataset, hidden_size, vocab_size):
             forward_pass = lstm.forward(inputs_one_hot, h, c)
 
             # Backward pass
-            loss, _ = lstm.backward(forward_pass, targets_one_hot, h, c)
+            loss, _ = lstm.backward(forward_pass, targets_one_hot)
 
             # Update loss
             epoch_validation_loss += loss
         # For each sentence in training set
+        t = 0
         for inputs, targets in dataset.training_set:
 
             # One-hot encode input and target sequence
@@ -59,13 +60,14 @@ def train(dataset, hidden_size, vocab_size):
             forward_pass = lstm.forward(inputs_one_hot, h, c)
 
             # Backward pass
-            loss, grads = lstm.backward(forward_pass, targets_one_hot, h, c)
+            loss, grads = lstm.backward(forward_pass, targets_one_hot)
 
             # Update parameters
+
             params = lstm.update_parameters(grads)
 
             # Update loss
-            output_sentence = [dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]]
+            #output_sentence = [dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]]
 
             epoch_training_loss += loss
 
@@ -83,13 +85,21 @@ def train(dataset, hidden_size, vocab_size):
             print(targets)
 
             print('\nPredicted sequence:')
-            print([dataset.idx_to_word[np.argmax(output)] for output in forward_pass["output_s"]])
+            print([dataset.idx_to_word[np.argmax(output)] for output in forward_pass["result"]])
     return training_loss, validation_loss
 
 
 if __name__ == "__main__":
-    hidden_size = 20
+    #  sequences = []
+    #
+    #  with open("data.txt", "r") as file:
+    #      for line in file:
+    #          words = line.split()
+    #          sequences.append(words)
+    #  print(sequences)
+    hidden_size = 24
     sequences = generate_sequences()
+    # print(sequences)
     dataset = Dataset()
     dataset.generate_dataset(sequences)
 
