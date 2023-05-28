@@ -7,8 +7,8 @@ from optimizer import adam_optimizer as Adam
 #from utils import one_hot_encode_sequence
 
 
-def my_build_model(X, hidden_size, vocab_size):
-    lstm = LSTM(hidden_size = hidden_size, vocab_size = vocab_size, optimizer=Adam, loss_func=mean_squared_error)
+def my_build_model(X, hidden_size, input_size):
+    lstm = LSTM(hidden_size = hidden_size, input_size = input_size, optimizer=Adam, loss_func=mean_squared_error)
     return lstm
 
 
@@ -21,7 +21,7 @@ def train_split(X, Y, test_size):
     return X_train, X_valid, Y_train, Y_valid
 
 
-def my_train(lstm, X, Y, hidden_size, vocab_size):
+def my_train(lstm, X, Y, hidden_size, input_size):
 
     # Hyper-parameters
     num_epochs = 100
@@ -105,9 +105,9 @@ if __name__ == "__main__":
     embed_dim = 12
     lstm_out = 300
     batch_size = 32
-    vocab_size = 2500
+    input_size = 2500
     X = [[0,0,9,6,324,2,4,131,289,109,293,9],[2,84,67,60,74,97, 4,667,388,554,67,46,15]]
     Y = [[True, False], [False, True]]
-    model = my_build_model(X, hidden_size=lstm_out, vocab_size = 2500)
-    my_train(model, X, Y, lstm_out, vocab_size)
+    model = my_build_model(X, hidden_size=lstm_out, input_size = len(X[0]))
+    my_train(model, X, Y, lstm_out, input_size)
 

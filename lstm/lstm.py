@@ -5,30 +5,30 @@ import numpy as np
 
 
 class LSTM:
-    def __init__(self, hidden_size, vocab_size, optimizer, loss_func):
+    def __init__(self, hidden_size, input_size, optimizer, loss_func):
         """
         Initializes our LSTM network.
 
         Args:
             `hidden_size`: the dimensions of the hidden state (how much we should look back)
-            `vocab_size`: the dimensions of our vocabulary
+            `input_size`: the size of our input
         """
         self.ltm = 0
         self.stm = 0
         self.hidden_size = hidden_size
-        self.vocab_size = vocab_size
+        self.input_size = input_size
         self._optimizer = optimizer
         self._loss_func = loss_func
         self.USE_OPTIMIZER = True
 
-        z_size = hidden_size + vocab_size
+        z_size = hidden_size + input_size
         self.parameters = {
             "weights": {
                 "W_Forget": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
                 "W_Input": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
                 "W_Candidate": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
                 "W_Output": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
-                "W_stm": self.__init_orthogonal(np.zeros((vocab_size, hidden_size))),
+                "W_stm": self.__init_orthogonal(np.zeros((input_size, hidden_size))),
 
             },
             "bias": {
@@ -36,7 +36,7 @@ class LSTM:
                 "b_Input": np.zeros((hidden_size, 1)),
                 "b_Candidate": np.zeros((hidden_size, 1)),
                 "b_Output": np.zeros((hidden_size, 1)),
-                "b_stm": np.zeros((vocab_size, 1)),
+                "b_stm": np.zeros((input_size, 1)),
             }
         }
 
@@ -125,6 +125,7 @@ class LSTM:
         # Append the initial cell and hidden state to their respective lists
         forward_pass["stm_prev"].append(stm_prev)
         forward_pass["ltm_prev"].append(ltm_prev)
+        print(inputs)
         for x in inputs:
             # Concatenate input and hidden state
             concat_input = np.row_stack((stm_prev, x))
@@ -132,6 +133,7 @@ class LSTM:
             # Calculate forget gate
             # self.parameters["weights"]["W_Forget"] 300,2800
             # concat_input  301, 1
+            print(x)
             print(stm_prev.shape)
             forget_gate = sigmoid(np.dot(self.parameters["weights"]["W_Forget"], concat_input) + self.parameters["bias"]["b_Forget"])
             forward_pass["Forget"].append(forget_gate)
