@@ -1,13 +1,11 @@
 # import pandas as pd
 #  import matplotlib.pyplot as plt
 from activation_functions import tanh_activation, sigmoid, softmax
-from optimizer import AdamOptim as Adam
 import numpy as np
-from sklearn.metrics import mean_squared_error
 
 
 class LSTM:
-    def __init__(self, hidden_size, vocab_size, optimizer=Adam):
+    def __init__(self, hidden_size, vocab_size, optimizer, loss_func):
         """
         Initializes our LSTM network.
 
@@ -19,7 +17,9 @@ class LSTM:
         self.stm = 0
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
-        self.optimizer = optimizer
+        self._optimizer = optimizer
+        self._loss_func = loss_func
+        self.USE_OPTIMIZER = True
 
         z_size = hidden_size + vocab_size
         self.parameters = {
@@ -39,6 +39,24 @@ class LSTM:
                 "b_stm": np.zeros((vocab_size, 1)),
             }
         }
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self, optimizer):
+        self._optimizer = optimizer
+
+
+    @property
+    def loss_func(self):
+        return self.loss_func
+
+    @loss_func.setter
+    def loss_func(self, loss_func):
+        self.loss_func = loss_func
+
 
     def __init_orthogonal(self, param):
         """
@@ -61,7 +79,6 @@ class LSTM:
         # Compute QR factorization
         q, r = np.linalg.qr(new_param)
 
-        # Make Q uniform according to https://arxiv.org/pdf/math-ph/0609050.pdf
         d = np.diag(r, 0)
         ph = np.sign(d)
         q *= ph
@@ -84,7 +101,7 @@ class LSTM:
     def forward(self, inputs, stm_prev, ltm_prev):
         """
         Arguments:
-            x -- your input data at timestep "t", numpy array of shape (n_x, m).
+            inputs -- your input data at timestep "t", numpy array of shape (n_x, m).
             stm_prev -- g_prev at timestep "t-1", numpy array of shape (n_a, m)
             ltm_prev -- C_prev at timestep "t-1", numpy array of shape (n_a, m)
         Returns:
@@ -113,6 +130,9 @@ class LSTM:
             concat_input = np.row_stack((stm_prev, x))
             forward_pass["Concat_Input"].append(concat_input)
             # Calculate forget gate
+            # self.parameters["weights"]["W_Forget"] 300,2800
+            # concat_input  301, 1
+            print(stm_prev.shape)
             forget_gate = sigmoid(np.dot(self.parameters["weights"]["W_Forget"], concat_input) + self.parameters["bias"]["b_Forget"])
             forward_pass["Forget"].append(forget_gate)
 
@@ -160,6 +180,14 @@ class LSTM:
         ce = -np.sum(targets * np.log(predictions + 1e-9)) / N
         return ce
 
+
+    def calculate_loss(self, prediction, targets):
+        loss = 0
+        for t in reversed(range(len(prediction))):
+            # Compute the cross entropy
+            loss += self.loss_func(prediction[t], targets[t])
+        return loss 
+
     def backward(self, forward_pass, targets):
         """
         Arguments:
@@ -197,7 +225,7 @@ class LSTM:
 
         for t in reversed(range(len(forward_pass["result"]))):
             # Compute the cross entropy
-            loss += mean_squared_error(forward_pass["result"][t], targets[t])
+            loss += self.loss_func(forward_pass["result"][t], targets[t])
             # Get the previous hidden cell state
             ltm_prev = forward_pass["ltm_prev"][t - 1]
 
@@ -276,15 +304,13 @@ class LSTM:
                 grad *= clip_coef
         return grads
 
-    def update_parameters(self, grads, lr=0.04):
+    def update_parameters(self, grads, t, lr=0.01):
         # Take a step
-        parameters = self.get_parameters
-        for (_, parameter), (_, grad) in zip(parameters["weights"].items(), grads["weights"].items()):
-            parameter -= lr * grad
-            #  dw,db = self.optimizer().update(w=parameter[0], b=parameter[1], dw=grad[0], db=grad[1])
-            #  parameter[0] -= dw
-            #  parameter[1] -= db
+        parameters = self.get_parameters["weights"]
+        if (self.USE_OPTIMIZER):
+            updated_parameters = self.optimizer(parameters=parameters, gradients=grads, learning_rate=lr, t=t)
+        else:
+            for (_, parameter), (_, grad) in zip(parameters.items(), grads.items()):
+                parameter -= lr * grad
 
 
-if __name__ == "__main__":
-    lstm = LSTM(10, 4)
