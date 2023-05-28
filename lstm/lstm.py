@@ -16,12 +16,12 @@ class LSTM:
         self.ltm = 0
         self.stm = 0
         self.hidden_size = hidden_size
-        self.input_size = input_size
+        self.input_size = 1
         self._optimizer = optimizer
         self._loss_func = loss_func
         self.USE_OPTIMIZER = True
 
-        z_size = hidden_size + input_size
+        z_size = hidden_size + self.input_size
         self.parameters = {
             "weights": {
                 "W_Forget": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
@@ -51,7 +51,7 @@ class LSTM:
 
     @property
     def loss_func(self):
-        return self.loss_func
+        return self._loss_func
 
     @loss_func.setter
     def loss_func(self, loss_func):
