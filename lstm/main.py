@@ -51,7 +51,7 @@ def my_train(lstm, X, Y, hidden_size, input_size):
             forward_pass = lstm.forward(inputs, h, c)
 
             # Backward pass
-            loss = lstm.calculate_loss(forward_pass["result"], targets)
+            loss = lstm.calculate_loss(forward_pass["result"][-1], targets)
 
             # Update loss
             epoch_validation_loss += loss
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     batch_size = 32
     input_size = 2500
     X = [[0,0,9,6,324,2,4,131,289,109,293,9],[2,84,67,60,74,97, 4,667,388,554,67,46,15]]
-    Y = [[True, False], [False, True]]
+    Y = [[1], [0]]
     model = my_build_model(X, hidden_size=lstm_out, input_size = len(X[0]))
     my_train(model, X, Y, lstm_out, input_size)
 

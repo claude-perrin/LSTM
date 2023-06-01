@@ -8,35 +8,67 @@ class LSTM:
     def __init__(self, hidden_size, input_size, optimizer, loss_func):
         """
         Initializes our LSTM network.
+        https://www.youtube.com/watch?v=P_TZN8kRObQ&ab_channel=ritvikmath
+
+        # should take :
+        # length_of_sequence, number of total timesteps
+        # feature_number, output
+        # hidden_state, how many timesteps we should remember
+
+        # length_of_sequence = 18
+        # feature_number = 7
+        # hidden_state = 2
+
+        https://towardsdatascience.com/examining-the-weight-and-bias-of-lstm-in-tensorflow-2-5576049a91fa
+        Since Tensorflow declares one array for all weights thats is why it has "8", 4(num_of_weights) * 2(hidden_state)
+
+        [<tf.Variable 'lstm/kernel:0' shape=(7, 8) dtype=float32>,
+        <tf.Variable 'lstm/recurrent_kernel:0' shape=(2, 8) dtype=float32>,
+        <tf.Variable 'lstm/bias:0' shape=(8,) dtype=float32>]
+
+        The input has 18 timestep and 7 parameters,
+        so every parameter has 1 weight against every neuron,
+        and that’s why lstm/kernel has shape 7x8.
+
+
+
+
+
 
         Args:
-            `hidden_size`: the dimensions of the hidden state (how much we should look back)
-            `input_size`: the size of our input
+            `hidden_size`: the dimensions of the hidden state (how much we should look back), IT IS our LTM
+            `input_size`: the size of our input/output, ht-1/ht, Size of FEAUTURES
         """
-        self.ltm = 0
-        self.stm = 0
         self.hidden_size = hidden_size
         self.input_size = 1
         self._optimizer = optimizer
         self._loss_func = loss_func
         self.USE_OPTIMIZER = True
 
-        z_size = hidden_size + self.input_size
+
+        # input_size = 2
+        # hidden_size = 1
+        # z_size = 24
+        z_size = self.hidden_size + self.input_size
+        """
+        Init
+        
+        """
         self.parameters = {
             "weights": {
-                "W_Forget": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
-                "W_Input": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
-                "W_Candidate": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
-                "W_Output": self.__init_orthogonal(np.zeros((hidden_size, z_size))),
-                "W_stm": self.__init_orthogonal(np.zeros((input_size, hidden_size))),
+                "W_Forget": self.__init_orthogonal(np.zeros((self.hidden_size, z_size))),
+                "W_Input": self.__init_orthogonal(np.zeros((self.hidden_size, z_size))),
+                "W_Candidate": self.__init_orthogonal(np.zeros((self.hidden_size, z_size))),
+                "W_Output": self.__init_orthogonal(np.zeros((self.hidden_size, z_size))),
+                #"W_stm": self.__init_orthogonal(np.zeros((self.input_size, self.hidden_size))),
 
             },
             "bias": {
-                "b_Forget": np.zeros((hidden_size, 1)),
-                "b_Input": np.zeros((hidden_size, 1)),
-                "b_Candidate": np.zeros((hidden_size, 1)),
-                "b_Output": np.zeros((hidden_size, 1)),
-                "b_stm": np.zeros((input_size, 1)),
+                "b_Forget": np.ones((hidden_size, 1)),
+                "b_Input": np.ones((hidden_size, 1)),
+                "b_Candidate": np.ones((hidden_size, 1)),
+                "b_Output": np.ones((hidden_size, 1)),
+                #"b_stm": np.ones((self.input_size, 1)),
             }
         }
 
@@ -133,8 +165,6 @@ class LSTM:
             # Calculate forget gate
             # self.parameters["weights"]["W_Forget"] 300,2800
             # concat_input  301, 1
-            print(x)
-            print(stm_prev.shape)
             forget_gate = sigmoid(np.dot(self.parameters["weights"]["W_Forget"], concat_input) + self.parameters["bias"]["b_Forget"])
             forward_pass["Forget"].append(forget_gate)
 
@@ -163,6 +193,11 @@ class LSTM:
             v = np.dot(self.parameters["weights"]["W_stm"], stm) + self.parameters["bias"]["b_stm"]
             forward_pass["stm"].append(v)
 
+            print(stm.shape)
+            print(self.parameters["weights"]["W_stm"].shape)
+            print("finish")
+            print(v.shape)
+
             # Calculate softmax
             result = softmax(v)
             forward_pass["result"].append(result)
@@ -185,10 +220,13 @@ class LSTM:
 
     def calculate_loss(self, prediction, targets):
         loss = 0
-        for t in reversed(range(len(prediction))):
-            # Compute the cross entropy
-            loss += self.loss_func(prediction[t], targets[t])
-        return loss 
+        # Compute the cross entropy
+        print("here")
+        print(prediction)
+        print("targets")
+        print(targets)
+        loss += self.loss_func(prediction[0], targets)
+        return loss
 
     def backward(self, forward_pass, targets):
         """
