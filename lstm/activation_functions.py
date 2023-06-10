@@ -39,14 +39,5 @@ def tanh_activation(x, derivative=False):
 
 
 def softmax(x):
-    """
-    Computes the softmax for an array x.
-
-    Args:
-     `x`: the array where the function is applied
-     `derivative`: if set to True will return the derivative instead of the forward pass
-    """
-    x_safe = x + 1e-12
-    f = np.exp(x_safe) / np.sum(np.exp(x_safe))
-
-    return f
+    e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return e_x / np.sum(e_x, axis=-1, keepdims=True)   
