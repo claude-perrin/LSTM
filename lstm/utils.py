@@ -51,14 +51,14 @@ def min_max_normalize(tokens):
 
 
 def get_dataset():
-    json_filename = 'review_mockup_500.json'
+    json_filename = 'review_mockup.json'
     with open(json_filename,'rb') as f:
         data = f.readlines()
     data = filter_data(data)
     tokenizer = Tokenizer(num_words = 2500, split=' ')
-    tokenizer.fit_on_texts(data=data.loc[:,'text'].values)
+    tokenizer.fit_on_texts(data.loc[:,'text'].values)
 
-    X = tokenizer.texts_to_sequences(data=data.loc[:,'text'].values)
+    X = tokenizer.texts_to_sequences(data.loc[:,'text'].values)
     #X = [min_max_normalize(i) for i in X]
     X = pad_sequences(X)
     Y = pd.get_dummies(data['sentiment'],dtype=int).values 
